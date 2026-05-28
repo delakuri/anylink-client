@@ -59,6 +59,7 @@ jobs:
         elif [ "${{ matrix.build }}" = "linux-arm64" ]; then
           echo "ARCHIVE_NAME=anylink-client-linux-arm64.tar.gz" >> $GITHUB_ENV
         elif [ "${{ matrix.build }}" = "windows" ]; then
+          echo "ARCHIVE=anylink-client-windows10-amd64" >> $GITHUB_ENV
           echo "ARCHIVE_NAME=anylink-client-windows10-amd64.zip" >> $GITHUB_ENV
         elif [ "${{ matrix.build }}" = "macos-arm64" ]; then
           echo "ARCHIVE_NAME=anylink-client-macOS-arm64.dmg" >> $GITHUB_ENV
@@ -73,6 +74,7 @@ jobs:
         elif [ "${{ matrix.build }}" = "linux-arm64" ]; then
           echo "ARCHIVE_NAME=anylink-client-${{ github.ref_name }}-linux-arm64.tar.gz" >> $GITHUB_ENV
         elif [ "${{ matrix.build }}" = "windows" ]; then
+          echo "ARCHIVE=anylink-client-${{ github.ref_name }}-windows10-amd64" >> $GITHUB_ENV
           echo "ARCHIVE_NAME=anylink-client-${{ github.ref_name }}-windows10-amd64.zip" >> $GITHUB_ENV
         elif [ "${{ matrix.build }}" = "macos-arm64" ]; then
           echo "ARCHIVE_NAME=anylink-client-${{ github.ref_name }}-macOS-arm64.dmg" >> $GITHUB_ENV
@@ -216,6 +218,31 @@ jobs:
           hdiutil create -fs HFS+ -srcfolder ${{ matrix.installer-name }}.app -format UDZO "${{ github.workspace }}"/archive/${{ env.ARCHIVE_NAME }}
         fi
         
+    - if: matrix.build == 'windows'
+      name: upload unsigned artifact
+      id: upload-unsigned-artifact
+      uses: actions/upload-artifact@v7
+      with: 
+        name: ${{ env.ARCHIVE }}
+        path: installer/${{ matrix.installer-name }}
+        
+    - if: matrix.build == 'windows'
+      name: submit signing request
+      uses: signpath/github-action-submit-signing-request@v2
+      continue-on-error: true
+      with:
+        api-token: '${{ secrets.SIGNPATH_API_TOKEN }}'
+        organization-id: 'aadf898a-69a7-45df-b8b4-27acea6a952a'
+        project-slug: 'anylink-client'
+        signing-policy-slug: 'test-signing'
+        artifact-configuration-slug: 'initial'
+        github-artifact-id: '${{ steps.upload-unsigned-artifact.outputs.artifact-id }}'
+        wait-for-completion: true
+        output-artifact-directory: 'archive'
+        skip-decompress: true
+        parameters: |
+          arch: "amd64"
+      
     - if: startsWith(github.ref, 'refs/heads/')
       name: Continuous release
       uses: softprops/action-gh-release@v3
