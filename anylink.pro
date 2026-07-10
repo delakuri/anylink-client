@@ -48,6 +48,8 @@ VERSION = 0.9.6
 macx {
     # https://doc.qt.io/qt-6/qmake-variable-reference.html#qmake-info-plist The value of QMAKE_BUNDLE should not be set directly by the project.
     QMAKE_TARGET_BUNDLE_PREFIX = pro.anylink
+    QMAKE_MACOSX_DEPLOYMENT_TARGET = 12.3
+    QMAKE_APPLE_DEVICE_ARCHS = arm64
 
     HEADERS += src/macdockiconhandler.h
     SOURCES += src/macdockiconhandler.mm
