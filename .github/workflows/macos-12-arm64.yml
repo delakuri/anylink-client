@@ -12,7 +12,7 @@ jobs:
     name: Build Monterey arm64 artifacts
     runs-on: macos-14
     env:
-      QT_VERSION: 6.8.4
+      QT_VERSION: 6.8.3
       QT_IFW_URL: https://download.qt.io/online/qtsdkrepository/mac_x64/ifw/tools_ifw_411/qt.tools.ifw.411/4.11.0-0-202603311245ifw-mac-universal.7z
       SSLCON_URL: https://github.com/tlslink/sslcon/releases/download/latest/sslcon-macOS-arm64.tar.gz
     steps:
