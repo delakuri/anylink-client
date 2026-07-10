@@ -1,0 +1,70 @@
+name: macOS 12.3 arm64 build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Monterey arm64 artifacts
+    runs-on: macos-14
+    env:
+      QT_VERSION: 6.8.4
+      QT_IFW_URL: https://download.qt.io/online/qtsdkrepository/mac_x64/ifw/tools_ifw_411/qt.tools.ifw.411/4.11.0-0-202603311245ifw-mac-universal.7z
+      SSLCON_URL: https://github.com/tlslink/sslcon/releases/download/latest/sslcon-macOS-arm64.tar.gz
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          arch: clang_64
+          modules: qtwebsockets
+          install-deps: false
+          cache: false
+
+      - name: Build AnyLink.app
+        shell: bash
+        run: |
+          qmake QMAKE_MACOSX_DEPLOYMENT_TARGET=12.3 QMAKE_APPLE_DEVICE_ARCHS=arm64
+          make -j "$(sysctl -n hw.logicalcpu)"
+          macdeployqt out/bin/AnyLink.app
+
+      - name: Bundle sslcon runtime
+        shell: bash
+        working-directory: out/bin
+        run: |
+          curl -fL -o sslcon-macOS-arm64.tar.gz "$SSLCON_URL"
+          tar -xzf sslcon-macOS-arm64.tar.gz
+          cp vpnagent sslcon AnyLink.app/Contents/MacOS/
+          chmod +x AnyLink.app/Contents/MacOS/vpnagent AnyLink.app/Contents/MacOS/sslcon
+          codesign --force --deep --sign - AnyLink.app
+          zip -qry ../../anylink-client-macOS-12.3-arm64-app.zip AnyLink.app
+
+      - name: Build unsigned installer DMG
+        shell: bash
+        run: |
+          curl -fL -o installer/qt-ifw-mac-universal.7z "$QT_IFW_URL"
+          7z x -y installer/qt-ifw-mac-universal.7z -oinstaller
+          mkdir -p installer/packages/root/data installer/packages/maintenance/data
+          cd out/bin
+          ../../installer/bin/archivegen ../../installer/packages/root/data/anylink.7z ./AnyLink.app
+          cd ../../installer
+          bin/binarycreator -f -c config/config.xml -p packages --mt
+          lipo uninstall.app/Contents/MacOS/uninstall -remove x86_64 -output uninstall.app/Contents/MacOS/uninstall
+          codesign --force --deep --sign - uninstall.app
+          bin/archivegen packages/maintenance/data/uninstall.7z uninstall.app
+          bin/binarycreator -f -c config/config.xml -p packages anylink-client-installer
+          lipo anylink-client-installer.app/Contents/MacOS/anylink-client-installer -remove x86_64 -output anylink-client-installer.app/Contents/MacOS/anylink-client-installer
+          codesign --force --deep --sign - anylink-client-installer.app
+          hdiutil create -fs HFS+ -srcfolder anylink-client-installer.app -format UDZO ../anylink-client-macOS-12.3-arm64-unsigned.dmg
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: anylink-client-macOS-12.3-arm64
+          path: |
+            anylink-client-macOS-12.3-arm64-app.zip
+            anylink-client-macOS-12.3-arm64-unsigned.dmg
