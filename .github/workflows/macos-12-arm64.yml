@@ -2,6 +2,10 @@ name: macOS 12.3 arm64 build
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+      - macos-12-arm64-build
 
 jobs:
   build:
